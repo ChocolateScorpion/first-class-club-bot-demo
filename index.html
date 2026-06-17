@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>First Class Club — Demo Bot WhatsApp Business API</title>
+<style>
+  :root{
+    --bg:#0a0a0a;
+    --panel:#13110d;
+    --panel2:#181410;
+    --gold:#C9A84C;
+    --gold-soft:#e3cb8c;
+    --gold-dark:#5c4a22;
+    --text:#F5F0E8;
+    --muted:#9c9484;
+    --user-bubble:#2b2410;
+    --bot-bubble:#16140f;
+  }
+
+  *{box-sizing:border-box;}
+
+  body{
+    margin:0;
+    min-height:100vh;
+    background:#050505;
+    background-image:radial-gradient(circle at 50% -10%, rgba(201,168,76,0.07), transparent 55%);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    color:var(--text);
+    padding:34px 14px 50px;
+  }
+
+  .page-chrome{
+    text-align:center;
+    margin-bottom:22px;
+    font-family:Georgia,'Times New Roman',serif;
+  }
+  .page-title{
+    font-size:26px;
+    font-weight:700;
+    letter-spacing:3px;
+    color:var(--gold-soft);
+    text-transform:uppercase;
+  }
+  .page-sub{
+    margin-top:6px;
+    font-size:12.5px;
+    letter-spacing:1.5px;
+    color:var(--muted);
+    text-transform:uppercase;
+  }
+
+  .phone{
+    width:400px;
+    max-width:100%;
+    height:760px;
+    background:var(--bg);
+    border-radius:30px;
+    border:1px solid var(--gold-dark);
+    box-shadow:0 0 0 7px #000, 0 25px 70px rgba(0,0,0,.65), 0 0 50px rgba(201,168,76,0.08);
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+  }
+
+  /* ---------- header ---------- */
+  .wa-header{
+    display:flex;
+    align-items:center;
+    gap:11px;
+    padding:13px 14px;
+    background:linear-gradient(180deg,#161108,#0f0c07);
+    border-bottom:1px solid var(--gold-dark);
+    flex-shrink:0;
+  }
+  .avatar{
+    width:40px;height:40px;border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, #f0dca0, #C9A84C 55%, #8a6f33 100%);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+    box-shadow:0 0 0 1px rgba(201,168,76,.45);
+  }
+  .avatar svg{width:21px;height:21px;}
+  .header-info{display:flex;flex-direction:column;line-height:1.25;overflow:hidden;}
+  .header-name{display:flex;align-items:center;gap:5px;font-weight:700;color:var(--text);font-size:15px;white-space:nowrap;}
+  .header-name .badge{flex-shrink:0;}
+  #header-status{font-size:12px;color:var(--gold-soft);transition:opacity .15s;}
+  .header-icons{margin-left:auto;display:flex;gap:16px;color:var(--gold-soft);font-size:17px;opacity:.85;}
+
+  /* ---------- tabs ---------- */
+  .tabs{display:flex;background:#0f0c07;border-bottom:1px solid var(--gold-dark);flex-shrink:0;}
+  .tab-btn{
+    flex:1;padding:12px 6px;background:transparent;border:none;color:var(--muted);
+    font-size:12px;font-weight:700;letter-spacing:.4px;cursor:pointer;position:relative;
+    font-family:inherit;text-transform:uppercase;
+  }
+  .tab-btn.active{color:var(--gold);}
+  .tab-btn.active::after{content:'';position:absolute;left:18%;right:18%;bottom:0;height:2px;background:var(--gold);}
+
+  /* ---------- chat area ---------- */
+  .chat-area{
+    flex:1;overflow-y:auto;padding:14px 0 12px;
+    display:flex;flex-direction:column;align-items:stretch;
+    background:var(--bg);
+  }
+  .chat-area::-webkit-scrollbar{width:6px;}
+  .chat-area::-webkit-scrollbar-thumb{background:var(--gold-dark);border-radius:3px;}
+
+  .msg-row{display:flex;margin:5px 12px;opacity:0;transform:translateY(6px);transition:opacity .25s ease,transform .25s ease;}
+  .msg-row.show{opacity:1;transform:translateY(0);}
+  .msg-row.user{justify-content:flex-end;}
+  .msg-row.bot{justify-content:flex-start;}
+
+  .bubble{
+    max-width:80%;padding:9px 12px 17px;border-radius:13px;position:relative;
+    font-size:13.6px;line-height:1.48;box-shadow:0 1px 3px rgba(0,0,0,.45);
+    white-space:pre-wrap;
+  }
+  .bubble.bot{background:var(--bot-bubble);color:var(--text);border:1px solid #2a2418;border-bottom-left-radius:3px;}
+  .bubble.user{background:var(--user-bubble);color:var(--text);border:1px solid #4a3a18;border-bottom-right-radius:3px;}
+  .bubble b{color:var(--gold-soft);font-weight:700;}
+  .meta{position:absolute;right:11px;bottom:4px;font-size:10px;color:var(--muted);display:flex;gap:3px;align-items:center;white-space:nowrap;}
+  .bubble.user .meta{color:#c9bda0;}
+  .ticks{color:var(--gold);font-size:11px;}
+
+  .bubble.typing{display:flex;gap:4px;align-items:center;padding:13px 16px;}
+  .dot{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite ease-in-out;}
+  .dot:nth-child(2){animation-delay:.2s;}
+  .dot:nth-child(3){animation-delay:.4s;}
+  @keyframes blink{0%,80%,100%{opacity:.25;transform:scale(.85);}40%{opacity:1;transform:scale(1);}}
+
+  /* ---------- interactive cards (buttons / list) ---------- */
+  .qr-card,.list-card{
+    align-self:flex-start;margin:2px 12px 12px 12px;background:var(--panel2);
+    border:1px solid var(--gold-dark);border-radius:11px;overflow:hidden;
+    max-width:86%;opacity:0;transform:translateY(6px);transition:opacity .25s,transform .25s;
+  }
+  .qr-card.show,.list-card.show{opacity:1;transform:translateY(0);}
+
+  .qr-btn{
+    display:block;width:100%;background:transparent;border:none;color:var(--gold-soft);
+    font-size:13.3px;font-weight:600;padding:11px 14px;text-align:center;cursor:pointer;font-family:inherit;
+  }
+  .qr-btn+.qr-btn{border-top:1px solid var(--gold-dark);}
+  .qr-btn:hover:not(:disabled){background:rgba(201,168,76,0.09);}
+  .qr-btn:disabled{cursor:default;opacity:.5;}
+  .qr-btn.selected{background:rgba(201,168,76,0.2);color:var(--gold);}
+
+  .list-card-title{
+    padding:10px 14px;font-size:11.5px;letter-spacing:.6px;color:var(--muted);
+    text-transform:uppercase;border-bottom:1px solid var(--gold-dark);background:rgba(201,168,76,0.04);
+  }
+  .list-row{
+    display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;
+    background:transparent;border:none;padding:10px 14px;text-align:left;cursor:pointer;font-family:inherit;
+  }
+  .list-row+.list-row{border-top:1px solid var(--gold-dark);}
+  .list-row:hover:not(.static){background:rgba(201,168,76,0.09);}
+  .list-row:disabled{cursor:default;opacity:.5;}
+  .lr-label{color:var(--text);font-size:13.4px;font-weight:700;}
+  .lr-sub{color:var(--gold-soft);font-size:11.8px;}
+  .list-row.static{cursor:default;}
+  .list-row.static .lr-sub{color:var(--muted);font-style:italic;}
+
+  /* ---------- system divider ---------- */
+  .sys-divider{
+    align-self:center;background:rgba(255,255,255,0.05);color:var(--muted);font-size:11px;
+    padding:5px 13px;border-radius:20px;margin:16px auto;opacity:0;transition:opacity .35s;
+    border:1px solid var(--gold-dark);letter-spacing:.3px;
+  }
+  .sys-divider.show{opacity:1;}
+
+  /* ---------- composer ---------- */
+  .composer{
+    display:flex;align-items:center;gap:8px;padding:10px 12px;
+    background:#0f0c07;border-top:1px solid var(--gold-dark);flex-shrink:0;
+  }
+  .composer .emoji-btn{background:transparent;color:var(--gold-soft);font-size:19px;border:none;cursor:default;flex-shrink:0;}
+  .composer input{
+    flex:1;background:#1a160e;border:1px solid var(--gold-dark);color:var(--text);
+    border-radius:20px;padding:9px 14px;font-size:13.3px;font-family:inherit;outline:none;min-width:0;
+  }
+  .composer input::placeholder{color:var(--muted);}
+  .composer input:disabled{opacity:.45;}
+  .composer .send-btn{
+    width:36px;height:36px;border-radius:50%;border:none;background:var(--gold);color:#1a1408;
+    font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .composer .send-btn:disabled{background:#3a3424;color:#776e58;cursor:default;}
+
+  /* ---------- footer / chrome below phone ---------- */
+  .page-footer{margin-top:22px;text-align:center;font-family:Georgia,'Times New Roman',serif;}
+  .reset-btn{
+    background:transparent;border:1px solid var(--gold);color:var(--gold-soft);
+    padding:9px 22px;border-radius:24px;font-size:12.5px;letter-spacing:1px;text-transform:uppercase;
+    cursor:pointer;font-family:inherit;
+  }
+  .reset-btn:hover{background:rgba(201,168,76,0.1);}
+  .disclaimer{margin-top:16px;font-size:11px;color:var(--muted);line-height:1.6;max-width:380px;}
+  .disclaimer b{color:var(--gold-soft);}
+
+  @media(max-width:460px){
+    body{padding:0;}
+    .page-chrome{margin:18px 0 14px;}
+    .phone{width:100%;height:100vh;border-radius:0;border:none;box-shadow:none;}
+    .page-footer{margin:14px 0 24px;}
+  }
+</style>
+</head>
+<body>
+
+  <div class="page-chrome">
+    <div class="page-title">First Class Club</div>
+    <div class="page-sub">Demo interactivo · Bot WhatsApp Business API</div>
+  </div>
+
+  <div class="phone">
+    <div class="wa-header">
+      <div class="avatar">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M12 3l2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5L4.8 8.3l5-.7L12 3z" fill="#1a1408"/></svg>
+      </div>
+      <div class="header-info">
+        <div class="header-name">
+          First Class Club
+          <svg class="badge" width="14" height="14" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#C9A84C"/><path d="M7 12.5l3 3 7-7.5" stroke="#1a1408" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div id="header-status">en línea 24/7</div>
+      </div>
+      <div class="header-icons">
+        <span>📞</span><span>⋮</span>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="contact">Primer contacto</button>
+      <button class="tab-btn" data-tab="followup">Seguimiento en servicio</button>
+    </div>
+
+    <div class="chat-area" id="chat-contact"></div>
+    <div class="chat-area" id="chat-followup" style="display:none"></div>
+
+    <div class="composer">
+      <button class="emoji-btn">😊</button>
+      <input id="composer-input" type="text" placeholder="Selecciona una opción arriba ⬆" disabled>
+      <button class="send-btn" id="composer-send" disabled>➤</button>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <button class="reset-btn" id="reset-demo">🔁 Reiniciar demo</button>
+    <p class="disclaimer">
+      Simulación visual con fines de demostración — no está conectada a WhatsApp real.<br>
+      Creado por <b>Cero Stack Studio</b> para First Class Club.
+    </p>
+  </div>
+
+<script>
+(function(){
+  'use strict';
+
+  var CLIENT = 'Alejandro';
+
+  var UNITS = [
+    { id:'sedan',       name:'Sedán',                  desc:'Ejecutivo · hasta 3 pax', p5:3800,  p10:5500  },
+    { id:'suv',         name:'SUV',                    desc:'Ejecutiva · hasta 4 pax', p5:5500,  p10:6500  },
+    { id:'suburban',    name:'Suburban',                desc:'Premium · hasta 6 pax',   p5:6500,  p10:8000  },
+    { id:'suburban-ln', name:'Suburban Línea Nueva',    desc:'Premium plus · hasta 6 pax', p5:9000, p10:12000 },
+    { id:'escalade',    name:'Escalade',                desc:'Máximo lujo · hasta 6 pax', p5:12000, p10:16000 },
+    { id:'hiace',       name:'Hiace 13 pax',            desc:'Grupo mediano',           p5:6000,  p10:8000  },
+    { id:'sprinter',    name:'Sprinter 20 pax',         desc:'Grupo grande · solo 10 hrs', p10:9500 },
+    { id:'airport',     name:'Aeropuerto / Punto A-B',  desc:'Traslado directo',        from:2100 }
+  ];
+
+  function unitById(id){ return UNITS.filter(function(u){return u.id===id;})[0]; }
+  function fmt(n){ return n.toLocaleString('es-MX'); }
+
+  function priceLine(u){
+    if(u.id==='airport') return 'Desde $' + fmt(u.from) + ' MXN';
+    if(u.p5 && u.p10) return '5h $' + fmt(u.p5) + ' · 10h $' + fmt(u.p10) + ' MXN';
+    if(u.p10) return '10h $' + fmt(u.p10) + ' MXN';
+    return '';
+  }
+
+  /* ===================== chat engine ===================== */
+
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+
+  function escapeHtml(str){
+    var d = document.createElement('div');
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function formatText(str){
+    return escapeHtml(str)
+      .replace(/\n/g,'<br>')
+      .replace(/\*(.+?)\*/g,'<b>$1</b>');
+  }
+
+  function currentTime(){
+    var d = new Date();
+    var h = d.getHours(), m = d.getMinutes();
+    return (h<10?'0':'')+h+':'+(m<10?'0':'')+m;
+  }
+
+  function scrollToBottom(container){
+    requestAnimationFrame(function(){ container.scrollTop = container.scrollHeight; });
+  }
+
+  function setStatus(text){
+    var el = document.getElementById('header-status');
+    el.textContent = text;
+  }
+
+  function appendBubble(container, who, html){
+    var wrap = document.createElement('div');
+    wrap.className = 'msg-row ' + who;
+    var bubble = document.createElement('div');
+    bubble.className = 'bubble ' + who;
+    bubble.innerHTML = html + '<span class="meta">' + currentTime() +
+      (who==='user' ? ' <span class="ticks">✓✓</span>' : '') + '</span>';
+    wrap.appendChild(bubble);
+    container.appendChild(wrap);
+    requestAnimationFrame(function(){ wrap.classList.add('show'); });
+    scrollToBottom(container);
+  }
+
+  function showTyping(container, ms){
+    return new Promise(function(resolve){
+      setStatus('escribiendo…');
+      var wrap = document.createElement('div');
+      wrap.className = 'msg-row bot';
+      wrap.innerHTML = '<div class="bubble bot typing"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>';
+      container.appendChild(wrap);
+      requestAnimationFrame(function(){ wrap.classList.add('show'); });
+      scrollToBottom(container);
+      setTimeout(function(){
+        wrap.remove();
+        setStatus('en línea 24/7');
+        resolve();
+      }, ms);
+    });
+  }
+
+  function botSay(container, text, delay){
+    return showTyping(container, delay || (850 + Math.random()*500)).then(function(){
+      appendBubble(container, 'bot', formatText(text));
+      return sleep(120);
+    });
+  }
+
+  function showDivider(container, text){
+    var d = document.createElement('div');
+    d.className = 'sys-divider';
+    d.innerHTML = '<span>' + escapeHtml(text) + '</span>';
+    container.appendChild(d);
+    requestAnimationFrame(function(){ d.classList.add('show'); });
+    scrollToBottom(container);
+    return sleep(450);
+  }
+
+  function askButtons(container, buttons){
+    return new Promise(function(resolve){
+      var card = document.createElement('div');
+      card.className = 'qr-card';
+      buttons.forEach(function(b){
+        var btn = document.createElement('button');
+        btn.className = 'qr-btn';
+        btn.innerHTML = escapeHtml(b.label);
+        btn.addEventListener('click', function(){
+          if(card.dataset.answered) return;
+          card.dataset.answered = '1';
+          Array.prototype.forEach.call(card.querySelectorAll('.qr-btn'), function(x){ x.disabled = true; });
+          btn.classList.add('selected');
+          appendBubble(container, 'user', escapeHtml(b.label));
+          resolve(b.value);
+        });
+        card.appendChild(btn);
+      });
+      container.appendChild(card);
+      requestAnimationFrame(function(){ card.classList.add('show'); });
+      scrollToBottom(container);
+    });
+  }
+
+  function askList(container, title, items){
+    return new Promise(function(resolve){
+      var card = document.createElement('div');
+      card.className = 'list-card';
+      var head = document.createElement('div');
+      head.className = 'list-card-title';
+      head.textContent = title;
+      card.appendChild(head);
+      items.forEach(function(item){
+        var row = document.createElement('button');
+        row.className = 'list-row';
+        row.innerHTML = '<span class="lr-label">'+escapeHtml(item.label)+'</span><span class="lr-sub">'+escapeHtml(item.sublabel||'')+'</span>';
+        row.addEventListener('click', function(){
+          if(card.dataset.answered) return;
+          card.dataset.answered = '1';
+          Array.prototype.forEach.call(card.querySelectorAll('.list-row'), function(x){ x.disabled = true; });
+          row.style.background = 'rgba(201,168,76,0.2)';
+          appendBubble(container, 'user', escapeHtml(item.label));
+          resolve(item.value);
+        });
+        card.appendChild(row);
+      });
+      container.appendChild(card);
+      requestAnimationFrame(function(){ card.classList.add('show'); });
+      scrollToBottom(container);
+    });
+  }
+
+  function showStaticList(container, title, items){
+    var card = document.createElement('div');
+    card.className = 'list-card';
+    var head = document.createElement('div');
+    head.className = 'list-card-title';
+    head.textContent = title;
+    card.appendChild(head);
+    items.forEach(function(item){
+      var row = document.createElement('div');
+      row.className = 'list-row static';
+      row.innerHTML = '<span class="lr-label">'+escapeHtml(item.label)+'</span><span class="lr-sub">'+escapeHtml(item.sublabel||'')+'</span>';
+      card.appendChild(row);
+    });
+    container.appendChild(card);
+    requestAnimationFrame(function(){ card.classList.add('show'); });
+    scrollToBottom(container);
+    return sleep(300);
+  }
+
+  function askFreeText(container, placeholder){
+    return new Promise(function(resolve){
+      var input = document.getElementById('composer-input');
+      var send = document.getElementById('composer-send');
+      input.disabled = false;
+      input.placeholder = placeholder;
+      input.value = '';
+      input.focus();
+      send.disabled = false;
+
+      function submit(){
+        var val = input.value.trim();
+        if(!val) return;
+        input.disabled = true;
+        send.disabled = true;
+        input.placeholder = 'Selecciona una opción arriba ⬆';
+        input.value = '';
+        cleanup();
+        appendBubble(container, 'user', escapeHtml(val));
+        resolve(val);
+      }
+      function onKey(e){ if(e.key === 'Enter'){ submit(); } }
+      function cleanup(){
+        send.removeEventListener('click', submit);
+        input.removeEventListener('keydown', onKey);
+      }
+      send.addEventListener('click', submit);
+      input.addEventListener('keydown', onKey);
+    });
+  }
+
+  /* ===================== TAB 1 — Primer contacto ===================== */
+
+  var chatContact = document.getElementById('chat-contact');
+
+  function runContactFlow(){
+    mainGreeting();
+  }
+
+  function mainGreeting(){
+    return botSay(chatContact, '¡Hola ' + CLIENT + '! 👋 Bienvenido a *First Class Club*.\n\nEs un placer atenderte. Estamos disponibles las 24 horas para coordinar tu servicio ejecutivo de transporte privado.')
+      .then(function(){ return showMainMenu(); });
+  }
+
+  function showMainMenu(intro){
+    return botSay(chatContact, intro || '¿En qué podemos ayudarte hoy, ' + CLIENT + '?')
+      .then(function(){
+        return askButtons(chatContact, [
+          { label:'🚘 Cotizar servicio', value:'cotizar' },
+          { label:'🚗 Ver unidades', value:'unidades' },
+          { label:'💳 Métodos de pago', value:'pago' },
+          { label:'✈️ Traslado aeropuerto', value:'aeropuerto' }
+        ]);
+      })
+      .then(routeMainMenu);
+  }
+
+  function routeMainMenu(choice){
+    if(choice === 'cotizar') return flowCotizar();
+    if(choice === 'unidades') return flowVerUnidades();
+    if(choice === 'pago') return flowMetodosPago();
+    if(choice === 'aeropuerto') return flowAeropuerto();
+  }
+
+  function flowCotizar(){
+    return botSay(chatContact, 'Perfecto, ' + CLIENT + '. Estas son nuestras unidades y tarifas vigentes:')
+      .then(function(){
+        return askList(chatContact, '📋 Selecciona tu unidad', UNITS.map(function(u){
+          return { label:u.name, sublabel:priceLine(u), value:u.id };
+        }));
+      })
+      .then(function(unitId){ return quoteSelectedUnit(unitById(unitId)); });
+  }
+
+  function flowVerUnidades(){
+    return botSay(chatContact, 'Conoce nuestra flota ejecutiva, ' + CLIENT + ':')
+      .then(function(){
+        return askList(chatContact, '🚘 Catálogo de unidades', UNITS.map(function(u){
+          return { label:u.name, sublabel:u.desc, value:u.id };
+        }));
+      })
+      .then(function(unitId){
+        var unit = unitById(unitId);
+        return botSay(chatContact, '¿Te gustaría cotizar la *' + unit.name + '* ahora?')
+          .then(function(){
+            return askButtons(chatContact, [
+              { label:'Sí, cotizar', value:'si' },
+              { label:'🔁 Volver al menú', value:'menu' }
+            ]);
+          })
+          .then(function(choice){
+            if(choice === 'si') return quoteSelectedUnit(unit);
+            return showMainMenu('Claro, ' + CLIENT + '. Aquí tienes el menú nuevamente:');
+          });
+      });
+  }
+
+  function quoteSelectedUnit(unit){
+    if(unit.p5 && unit.p10){
+      return botSay(chatContact, 'Excelente elección — *' + unit.name + '*. ¿Cuántas horas de servicio necesitas?')
+        .then(function(){
+          return askButtons(chatContact, [
+            { label:'5 horas — $' + fmt(unit.p5) + ' MXN', value:'5' },
+            { label:'10 horas — $' + fmt(unit.p10) + ' MXN', value:'10' }
+          ]);
+        })
+        .then(function(hours){
+          var price = hours === '5' ? unit.p5 : unit.p10;
+          return collectData(unit, hours, price);
+        });
+    }
+    if(unit.id === 'sprinter'){
+      return botSay(chatContact, 'La *Sprinter 20 pax* está disponible en servicio de 10 horas, con tarifa de $' + fmt(unit.p10) + ' MXN.')
+        .then(function(){
+          return askButtons(chatContact, [{ label:'Continuar con la reservación', value:'ok' }]);
+        })
+        .then(function(){ return collectData(unit, '10', unit.p10); });
+    }
+    // airport
+    return botSay(chatContact, 'El traslado *Aeropuerto / Punto A-B* tiene una tarifa desde $' + fmt(unit.from) + ' MXN, dependiendo de la zona exacta.')
+      .then(function(){
+        return askButtons(chatContact, [{ label:'Continuar con la reservación', value:'ok' }]);
+      })
+      .then(function(){ return collectData(unit, 'trip', unit.from); });
+  }
+
+  function collectData(unit, hours, price){
+    return botSay(chatContact, 'Para reservar, compárteme estos datos en un solo mensaje, ' + CLIENT + ':\n📅 Fecha\n🕒 Hora\n📍 Origen')
+      .then(function(){
+        return askFreeText(chatContact, 'Ej. 24 de junio, 7:00 pm, Polanco');
+      })
+      .then(function(datos){ return showSummary(unit, hours, price, datos); });
+  }
+
+  function showSummary(unit, hours, price, datos){
+    var hoursLabel = hours === 'trip' ? 'Traslado directo' : (hours + ' horas');
+    var priceNote = unit.id === 'airport' ? ' (tarifa desde, sujeta a confirmación de zona)' : '';
+    var msg = 'Aquí tu resumen ejecutivo, ' + CLIENT + ': 📝\n\n' +
+      '🚘 Unidad: *' + unit.name + '*\n' +
+      '⏱ Servicio: *' + hoursLabel + '*\n' +
+      '📍 Datos: ' + datos + '\n' +
+      '💰 Total: *$' + fmt(price) + ' MXN*' + priceNote + '\n\n' +
+      '¿Confirmas tu reservación?';
+    return botSay(chatContact, msg)
+      .then(function(){
+        return askButtons(chatContact, [
+          { label:'✅ Confirmar reservación', value:'ok' },
+          { label:'✏️ Modificar datos', value:'edit' }
+        ]);
+      })
+      .then(function(choice){
+        if(choice === 'edit') return collectData(unit, hours, price);
+        return confirmAndPay(price);
+      });
+  }
+
+  function confirmAndPay(price){
+    var deposit = Math.round(price * 0.5);
+    var remainder = price - deposit;
+    var msg = '¡Reservación confirmada, ' + CLIENT + '! 🎉\n\n' +
+      'Para asegurar tu unidad, solicitamos el 50% de anticipo:\n\n' +
+      '💰 Anticipo (50%): *$' + fmt(deposit) + ' MXN*\n' +
+      '💰 Saldo restante: $' + fmt(remainder) + ' MXN — se liquida al finalizar el servicio\n\n' +
+      'Métodos de pago disponibles:\n' +
+      '• Transferencia bancaria (SPEI)\n' +
+      '• Tarjeta de crédito o débito\n' +
+      '• Efectivo\n\n' +
+      'En cuanto confirmemos tu pago, te compartimos los datos de tu unidad y chofer asignado.\n\n' +
+      '¡Gracias por tu confianza, ' + CLIENT + '! 🛡️';
+    return botSay(chatContact, msg)
+      .then(function(){
+        return askButtons(chatContact, [{ label:'🔁 Volver al menú principal', value:'menu' }]);
+      })
+      .then(function(){ return showMainMenu('¿En qué más podemos ayudarte, ' + CLIENT + '?'); });
+  }
+
+  function flowMetodosPago(){
+    var msg = 'Estos son nuestros métodos de pago disponibles, ' + CLIENT + ':\n\n' +
+      '• Transferencia bancaria (SPEI)\n' +
+      '• Tarjeta de crédito o débito\n' +
+      '• Efectivo\n\n' +
+      'Para todas las reservaciones solicitamos un 50% de anticipo; el saldo restante se liquida al finalizar el servicio.';
+    return botSay(chatContact, msg)
+      .then(function(){
+        return askButtons(chatContact, [
+          { label:'🚘 Cotizar servicio', value:'cotizar' },
+          { label:'🔁 Volver al menú', value:'menu' }
+        ]);
+      })
+      .then(function(choice){
+        if(choice === 'cotizar') return flowCotizar();
+        return showMainMenu('Claro, ' + CLIENT + '. Aquí tienes el menú nuevamente:');
+      });
+  }
+
+  function flowAeropuerto(){
+    var airport = unitById('airport');
+    return botSay(chatContact, 'Nuestro servicio de traslado *Aeropuerto / Punto A-B* tiene una tarifa desde $' + fmt(airport.from) + ' MXN, dependiendo de la zona y unidad asignada.')
+      .then(function(){
+        return askButtons(chatContact, [
+          { label:'Cotizar mi traslado', value:'cotizar' },
+          { label:'🔁 Volver al menú', value:'menu' }
+        ]);
+      })
+      .then(function(choice){
+        if(choice === 'cotizar') return collectData(airport, 'trip', airport.from);
+        return showMainMenu('Claro, ' + CLIENT + '. Aquí tienes el menú nuevamente:');
+      });
+  }
+
+  /* ===================== TAB 2 — Seguimiento en servicio ===================== */
+
+  var chatFollowup = document.getElementById('chat-followup');
+  var EXTRA_HOUR_UNITS = UNITS.filter(function(u){ return u.id !== 'airport'; });
+
+  function runFollowupFlow(){
+    return botSay(chatFollowup, 'Simulador de seguimiento automático durante el servicio.\n\nElige un escenario para ver cómo el bot da seguimiento sin intervención humana, ' + CLIENT + ':')
+      .then(function(){
+        return askButtons(chatFollowup, [
+          { label:'Servicio de 5 horas', value:'5' },
+          { label:'Servicio de 10 horas', value:'10' }
+        ]);
+      })
+      .then(startCheckIn);
+  }
+
+  function startCheckIn(scenario){
+    var checkInTime = scenario === '5' ? '4 horas' : '9 horas';
+    return showDivider(chatFollowup, '🕓 ' + checkInTime + ' después de iniciado el servicio')
+      .then(function(){
+        return botSay(chatFollowup, 'Hola ' + CLIENT + ' 👋 Esperamos que tu servicio ejecutivo esté siendo de tu total satisfacción.\n\nTe recordamos que tu servicio contratado de *' + scenario + ' horas* está por concluir — queda *1 hora* restante.\n\n¿Cómo va todo?');
+      })
+      .then(function(){
+        return askButtons(chatFollowup, [
+          { label:'✅ Todo excelente', value:'ok' },
+          { label:'⏱ Necesito horas adicionales', value:'extra' },
+          { label:'💬 Hablar con alguien', value:'human' }
+        ]);
+      })
+      .then(function(choice){ return routeCheckIn(choice); });
+  }
+
+  function routeCheckIn(choice){
+    if(choice === 'ok'){
+      return botSay(chatFollowup, '¡Excelente, ' + CLIENT + '! Nos da mucho gusto saber que todo va bien. Tu servicio concluirá en aproximadamente 1 hora. Gracias por confiar en First Class Club.')
+        .then(closingFlow);
+    }
+    if(choice === 'extra'){
+      return botSay(chatFollowup, 'Con gusto, ' + CLIENT + '. Estas son nuestras tarifas de referencia por hora adicional:')
+        .then(function(){
+          return showStaticList(chatFollowup, '⏱ Tarifa por hora adicional', EXTRA_HOUR_UNITS.map(function(u){
+            return { label:u.name, sublabel:'$_____ / hora adicional — confirma con tu asesor' };
+          }));
+        })
+        .then(function(){
+          return botSay(chatFollowup, '¿Cuántas horas adicionales necesitas?');
+        })
+        .then(function(){
+          return askButtons(chatFollowup, [
+            { label:'+1 hora', value:'1' },
+            { label:'+2 horas', value:'2' },
+            { label:'Otra cantidad', value:'otra' }
+          ]);
+        })
+        .then(function(value){
+          if(value === 'otra'){
+            return askFreeText(chatFollowup, 'Indica cuántas horas adicionales necesitas').then(extraConfirmed);
+          }
+          return extraConfirmed(value);
+        });
+    }
+    // human
+    return botSay(chatFollowup, 'Entendido, ' + CLIENT + '. Te estamos conectando con un asesor ejecutivo de First Class Club — la atención continuará de forma personalizada en unos momentos. 📞')
+      .then(function(){
+        return askButtons(chatFollowup, [{ label:'🔁 Volver a simular', value:'restart' }]);
+      })
+      .then(restartFollowup);
+  }
+
+  function extraConfirmed(n){
+    var label = n + (n === '1' ? ' hora adicional' : ' horas adicionales');
+    return botSay(chatFollowup, 'Perfecto, ' + CLIENT + '. Registramos *' + label + '*. Un asesor te confirmará el costo exacto y se ajustará tu saldo final.\n\nMientras tanto, tu unidad continúa en servicio sin interrupciones.')
+      .then(function(){
+        return askButtons(chatFollowup, [{ label:'🔁 Volver a simular', value:'restart' }]);
+      })
+      .then(restartFollowup);
+  }
+
+  function closingFlow(){
+    return showDivider(chatFollowup, '✅ Servicio finalizado')
+      .then(function(){
+        return botSay(chatFollowup, 'Tu servicio ha concluido, ' + CLIENT + '. Gracias por elegir First Class Club. ⭐\n\n¿Cómo calificarías la atención recibida hoy?');
+      })
+      .then(function(){
+        return askButtons(chatFollowup, [
+          { label:'⭐⭐⭐⭐⭐ Excelente', value:'5' },
+          { label:'⭐⭐⭐⭐ Buena', value:'4' },
+          { label:'⭐⭐⭐ Regular', value:'3' }
+        ]);
+      })
+      .then(function(){
+        return botSay(chatFollowup, '¡Gracias por tu calificación, ' + CLIENT + '! Fue un placer atenderte. Esperamos verte pronto en *First Class Club*. 🛡️✨');
+      })
+      .then(function(){
+        return askButtons(chatFollowup, [{ label:'🔁 Volver a simular', value:'restart' }]);
+      })
+      .then(restartFollowup);
+  }
+
+  function restartFollowup(){
+    chatFollowup.innerHTML = '';
+    return runFollowupFlow();
+  }
+
+  /* ===================== tabs + init ===================== */
+
+  var startedContact = false, startedFollowup = false;
+  var tabButtons = document.querySelectorAll('.tab-btn');
+
+  function switchTab(tab){
+    Array.prototype.forEach.call(tabButtons, function(b){
+      b.classList.toggle('active', b.dataset.tab === tab);
+    });
+    document.getElementById('chat-contact').style.display = tab === 'contact' ? 'flex' : 'none';
+    document.getElementById('chat-followup').style.display = tab === 'followup' ? 'flex' : 'none';
+
+    if(tab === 'contact' && !startedContact){ startedContact = true; runContactFlow(); }
+    if(tab === 'followup' && !startedFollowup){ startedFollowup = true; runFollowupFlow(); }
+  }
+
+  Array.prototype.forEach.call(tabButtons, function(btn){
+    btn.addEventListener('click', function(){ switchTab(btn.dataset.tab); });
+  });
+
+  document.getElementById('reset-demo').addEventListener('click', function(){
+    chatContact.innerHTML = '';
+    chatFollowup.innerHTML = '';
+    startedContact = false;
+    startedFollowup = false;
+    var input = document.getElementById('composer-input');
+    var send = document.getElementById('composer-send');
+    input.disabled = true; send.disabled = true;
+    input.placeholder = 'Selecciona una opción arriba ⬆';
+    switchTab('contact');
+  });
+
+  switchTab('contact');
+})();
+</script>
+</body>
+</html>
